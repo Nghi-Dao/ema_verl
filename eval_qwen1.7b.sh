@@ -1,0 +1,33 @@
+cd verl
+unset ROCR_VISIBLE_DEVICES
+PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
+  algorithm.adv_estimator=grpo \
+  data.train_files=$HOME/data/gsm8k/train.parquet \
+  data.val_files=$HOME/data/gsm8k/test.parquet \
+  data.max_prompt_length=1024 \
+  data.max_response_length=2048 \
+  custom_reward_function.path=$(pwd)/../my_reward.py \
+  custom_reward_function.name=compute_score \
+  +reward_model.use_reward_loop=True \
+  +reward_model.reward_manager=remote \
+  reward_model.num_workers=8 \
+  actor_rollout_ref.model.path=Qwen/Qwen3-1.7B-Base \
+  actor_rollout_ref.model.use_liger=True \
+  actor_rollout_ref.actor.strategy=fsdp2 \
+  actor_rollout_ref.ref.strategy=fsdp2 \
+  actor_rollout_ref.actor.ppo_mini_batch_size=256 \
+  actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=64 \
+  actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=64 \
+  actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=64 \
+  actor_rollout_ref.rollout.name=vllm \
+  actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
+  actor_rollout_ref.rollout.gpu_memory_utilization=0.8 \
+  actor_rollout_ref.rollout.val_kwargs.do_sample=False \
+  actor_rollout_ref.rollout.val_kwargs.temperature=0 \
+  actor_rollout_ref.rollout.val_kwargs.top_p=0.95 \
+  actor_rollout_ref.rollout.val_kwargs.n=1 \
+  trainer.val_only=True \
+  trainer.n_gpus_per_node=1 \
+  trainer.nnodes=1 \
+  trainer.log_val_generations=128 \
+  trainer.logger=[console,wandb] 2>&1 | tee eval.log
